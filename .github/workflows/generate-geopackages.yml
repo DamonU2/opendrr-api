@@ -1,0 +1,41 @@
+name: Generate geopackages
+
+# Workflow runs when manually triggered using the UI or API.
+on:
+  workflow_dispatch:
+    # Inputs the workflow accepts.
+    #inputs:
+      #name:
+        # Friendly description to be shown in the UI instead of 'name'
+        #description: 'Person to greet'
+        # Default value if no value is explicitly provided
+        #default: 'World'
+        # Input has to be provided for the workflow to run
+        #required: true
+
+jobs:
+  docker-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup .env and config
+      env:
+          MY_PAT: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        cp sample.env .env
+        cat <<EOF > python/config.ini
+        [auth]
+        github_token = $MY_PAT
+        EOF
+        chmod 600 python/config.ini
+
+    - name: Build docker compose stack
+      run: docker-compose up -d
+
+    - name: Check running containers
+      run: docker ps -a
+    - name: Check logs
+      run: docker logs backend
