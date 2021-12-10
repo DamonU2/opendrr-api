@@ -1,0 +1,108 @@
+name: Generate geopackages for DSRA
+
+# Workflow runs when manually triggered using the UI or API.
+on:
+  push:
+    branches: [geopackage-action]
+  workflow_dispatch:
+
+jobs:
+  build-gpkgs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Free up disk space by deleting unused software
+      run: |
+        df -h
+        $TIME_RUN sudo eatmydata rm -rf /usr/share/dotnet       # 24.1 GB
+        $TIME_RUN sudo eatmydata rm -rf /usr/local/lib/android  # 11.3 GB
+        $TIME_RUN sudo eatmydata rm -rf /opt/ghc                #  1.8 GB
+        $TIME_RUN sudo eatmydata rm -rf /usr/share/swift        #  1.3 GB
+        $TIME_RUN sudo eatmydata rm -rf /usr/local/graalvm      #  1.0 GB
+        df -h
+
+    - name: Checkout using current working branch with lfs enabled
+      uses: actions/checkout@v2
+      with:
+        ref: update_dsra_psra_oct2021
+        lfs: 'true'
+
+    - name: Setup .env
+      env:
+        MY_PAT: ${{ secrets.MY_PAT }}   
+      run: |
+        cp sample.env .env
+        cat <<EOF > python/config.ini
+        [rds]
+        postgres_host = db-opendrr
+        postgres_port = 5432
+        postgres_un = postgres
+        postgres_pw = password
+        postgres_db = opendrr
+        postgres_address = db-opendrr:5432/opendrr
+
+        [es]
+        es_un = elastic
+        es_pw = changeme
+        es_endpoint = elasticsearch-opendrr:9200
+        kibana_endpoint = localhost:5601
+
+        [auth]
+        github_token = $MY_PAT
+        EOF
+        chmod 600 python/config.ini
+
+    - name: Set up docker containers, build database, and exit with timeout
+      continue-on-error: true
+      run: docker compose up --build
+      # Once testing is complete, increase to avoid early timeout
+      timeout-minutes: 255
+
+    - name: Install ogr2ogr
+      run: |
+        sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+        sudo apt-get update
+        sudo apt-get install gdal-bin
+        npm install ogr2ogr
+
+    - name: Generate gpkg
+      run: |
+        mkdir temp zipped
+
+        scenarios=(dsra_acm7p3_leechriverfullfault dsra_idm7p1_sidney dsra_sim9p0_cascadiainterfacebestfault)
+        for i in "${scenarios[@]}"
+        do
+          ogr2ogr -f GPKG temp/$i_indicators_b.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_$i.$i_indicators_b" -nln $i_indicators_b
+          zip zipped/$i_indicators_b temp/$i_indicators_b.gpkg
+
+          ogr2ogr -f GPKG temp/$i_indicators_s.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_$i.$i_indicators_s" -nln $i_indicators_s
+          zip zipped/$i_indicators_s temp/$i_indicators_s.gpkg
+
+          ogr2ogr -f GPKG temp/$i_indicators_csd.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_$i.$i_indicators_csd" -nln $i_indicators_csd
+          zip zipped/$i_indicators_csd temp/$i_indicators_csd.gpkg
+
+          ogr2ogr -f GPKG temp/$i_shakemap.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_$i.$i_shakemap" -nln $i_shakemap
+          zip zipped/$i_shakemap temp/$i_shakemap.gpkg
+        done
+
+        layers=(dsra_all_scenarios_building dsra_all_scenarios_cduid dsra_all_scenarios_csduid dsra_all_scenarios_dauid dsra_all_scenarios_eruid dsra_all_scenarios_fsauid dsra_all_scenarios_pruid dsra_all_scenarios_sauid)
+        for i in "${layers[@]}"
+        do
+          ogr2ogr -f GPKG temp/$i.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM dsra.$i" -nln $i
+          zip zipped/$i temp/$i.gpkg
+        done
+
+        ogr2ogr -f GPKG temp/shakemap_scenario_extents.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM gmf.shakemap_scenario_extents" -nln shakemap_scenario_extents
+        zip zipped/shakemap_scenario_extents temp/shakemap_scenario_extents.gpkg
+
+    - name: Push files to FINISHED/geopackages in the earthquake-scenarios repo
+      uses: dmnemec/copy_file_to_another_repo_action@main
+      env:
+        API_TOKEN_GITHUB: ${{ secrets.MY_PAT }}
+      with:
+        source_file: 'zipped/.'
+        destination_repo: 'DamonU2/earthquake-scenarios'
+        destination_folder: 'FINISHED/geopackages'
+        user_email: '41898282+github-actions[bot]@users.noreply.github.com'
+        user_name: 'github-actions[bot]'
+        commit_message: 'Geopackages updated'
