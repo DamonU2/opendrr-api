@@ -56,7 +56,7 @@ jobs:
       continue-on-error: true
       run: docker compose up --build
       # Once testing is complete, increase to avoid early timeout
-      timeout-minutes: 255
+      timeout-minutes: 275
 
     - name: Install ogr2ogr
       run: |
