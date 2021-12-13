@@ -31,7 +31,30 @@ jobs:
       env:
         MY_PAT: ${{ secrets.MY_PAT }}   
       run: |
-        cp sample.env .env
+        cat <<EOF > .env
+        POSTGRES_USER=postgres
+        POSTGRES_PASS=password
+        POSTGRES_PORT=5432
+        POSTGRES_HOST=db-opendrr
+        DB_NAME=opendrr
+        POPULATE_DB=0
+
+        KIBANA_ENDPOINT=http://kibana-opendrr:5601
+        ES_ENDPOINT=http://elasticsearch-opendrr:9200
+
+        loadDsraScenario=true
+        loadPsraModels=false
+        loadHazardThreat=false
+        loadPhysicalExposure=false
+        loadRiskDynamics=false
+        loadSocialFabric=false
+        loadHexGrid=false
+
+        ADD_DATA_PRINT_FUNCNAME=true
+        ADD_DATA_PRINT_LINENO=true
+        EOF
+        chmod 600 .env
+
         cat <<EOF > python/config.ini
         [rds]
         postgres_host = db-opendrr
@@ -52,57 +75,95 @@ jobs:
         EOF
         chmod 600 python/config.ini
 
-    - name: Set up docker containers, build database, and exit with timeout
-      continue-on-error: true
-      run: docker compose up --build
-      # Once testing is complete, increase to avoid early timeout
-      timeout-minutes: 255
+    # - name: Set up docker containers, build database, and exit with timeout
+    #   continue-on-error: true
+    #   run: docker compose up --build
+    #   # Once testing is complete, increase to avoid early timeout
+    #   timeout-minutes: 120
 
-    - name: Install ogr2ogr
-      run: |
-        sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
-        sudo apt-get update
-        sudo apt-get install gdal-bin
-        npm install ogr2ogr
+    # - name: Install ogr2ogr
+    #   run: |
+    #     sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+    #     sudo apt-get update
+    #     sudo apt-get install gdal-bin
+    #     npm install ogr2ogr
 
     - name: Generate gpkg
       run: |
         mkdir temp zipped
+        echo 'This is a test' > zipped/data.txt
 
-        scenarios=(dsra_acm7p3_leechriverfullfault dsra_idm7p1_sidney dsra_sim9p0_cascadiainterfacebestfault)
-        for i in "${scenarios[@]}"
-        do
-          ogr2ogr -f GPKG temp/$i_indicators_b.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password"  -nln $i_indicators_b -sql "SELECT * FROM results_$i.$i_indicators_b"
-          zip zipped/$i_indicators_b temp/$i_indicators_b.gpkg
+      # scenarios=(dsra_acm7p3_leechriverfullfault dsra_idm7p1_sidney dsra_sim9p0_cascadiainterfacebestfault)
+      # for i in "${scenarios[@]}"
+      # do
+      #   ogr2ogr -f GPKG temp/${i}_indicators_b.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_${i}.${i}_indicators_b" -nln ${i}_indicators_s
+      #   zip zipped/${i}_indicators_b temp/${i}_indicators_b.gpkg
 
-          ogr2ogr -f GPKG temp/$i_indicators_s.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_$i.$i_indicators_s" -nln $i_indicators_s
-          zip zipped/$i_indicators_s temp/$i_indicators_s.gpkg
+      #   ogr2ogr -f GPKG temp/${i}_indicators_s.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_${i}.${i}_indicators_s" -nln ${i}_indicators_s
+      #   zip zipped/${i}_indicators_s temp/${i}_indicators_s.gpkg
 
-          ogr2ogr -f GPKG temp/$i_indicators_csd.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_$i.$i_indicators_csd" -nln $i_indicators_csd
-          zip zipped/$i_indicators_csd temp/$i_indicators_csd.gpkg
+      #   ogr2ogr -f GPKG temp/${i}_indicators_csd.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_${i}.${i}_indicators_csd" -nln ${i}_indicators_csd
+      #   zip zipped/${i}_indicators_csd temp/${i}_indicators_csd.gpkg
 
-          ogr2ogr -f GPKG temp/$i_shakemap.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_$i.$i_shakemap" -nln $i_shakemap
-          zip zipped/$i_shakemap temp/$i_shakemap.gpkg
-        done
+      #   ogr2ogr -f GPKG temp/${i}_shakemap.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_${i}.${i}_shakemap" -nln ${i}_shakemap
+      #   zip zipped/${i}_shakemap temp/${i}_shakemap.gpkg
+      # done
 
-        layers=(dsra_all_scenarios_building dsra_all_scenarios_cduid dsra_all_scenarios_csduid dsra_all_scenarios_dauid dsra_all_scenarios_eruid dsra_all_scenarios_fsauid dsra_all_scenarios_pruid dsra_all_scenarios_sauid)
-        for i in "${layers[@]}"
-        do
-          ogr2ogr -f GPKG temp/$i.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM dsra.$i" -nln $i
-          zip zipped/$i temp/$i.gpkg
-        done
+      # layers=(dsra_all_scenarios_building dsra_all_scenarios_cduid dsra_all_scenarios_csduid dsra_all_scenarios_dauid dsra_all_scenarios_eruid dsra_all_scenarios_fsauid dsra_all_scenarios_pruid dsra_all_scenarios_sauid)
+      # for i in "${layers[@]}"
+      # do
+      #   ogr2ogr -f GPKG temp/${i}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM dsra.${i}" -nln ${i}
+      #   zip zipped/${i} temp/${i}.gpkg
+      # done
 
-        ogr2ogr -f GPKG temp/shakemap_scenario_extents.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM gmf.shakemap_scenario_extents" -nln shakemap_scenario_extents
-        zip zipped/shakemap_scenario_extents temp/shakemap_scenario_extents.gpkg
+      # ogr2ogr -f GPKG temp/shakemap_scenario_extents.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM gmf.shakemap_scenario_extents" -nln shakemap_scenario_extents
+      # zip zipped/shakemap_scenario_extents temp/shakemap_scenario_extents.gpkg
 
-    - name: Push files to FINISHED/geopackages in the earthquake-scenarios repo
-      uses: dmnemec/copy_file_to_another_repo_action@main
+    - name: Push files to geopackage-update branch and open PR in earthquake-scenarios repo
       env:
         API_TOKEN_GITHUB: ${{ secrets.MY_PAT }}
-      with:
-        source_file: 'zipped/.'
-        destination_repo: 'DamonU2/earthquake-scenarios'
-        destination_folder: 'FINISHED/geopackages'
-        user_email: '41898282+github-actions[bot]@users.noreply.github.com'
-        user_name: 'github-actions[bot]'
-        commit_message: 'Geopackages updated'
+      run: |
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+
+        HOME=$PWD
+        DESTINATION_REPO="DamonU2/earthquake-scenarios"
+
+        TEMP_DIR=$(mktemp -d)
+
+        echo "Cloning earthquake-scenarios repository"
+        git clone "https://$API_TOKEN_GITHUB@github.com/$DESTINATION_REPO.git" "$TEMP_DIR"
+        cd $TEMP_DIR
+        git fetch -a
+
+        EXISTING_BRANCH=$(git show-ref "geopackage-update" | wc -l)
+        if [ $EXISTING_BRANCH == 0 ];
+        then
+          git checkout -b "geopackage-update"
+        else
+          git checkout "geopackage-update"
+        fi
+
+        echo "Copying files"
+        rsync --progress "$HOME/zipped" "$TEMP_DIR/FINISHED/geopackages"
+        git status
+        CHANGES=$(git status -s | wc -l)
+        git add .
+
+        if [ $CHANGES != 0 ];
+        then
+          git commit -m "Updates to geopackages"
+          echo "Pushing commit"
+          git push -u origin HEAD:geopackage-update
+
+          if [ $EXISTING_BRANCH == 0 ];
+          then
+            echo "Creating a pull request"
+            gh pr create -t "Updates to geopackages" -B master -H geopackage-update
+          else
+            echo "Updating pull request"
+            gh pr edit geopackage-update 
+          fi
+        else
+          echo "No changes made"
+        fi
