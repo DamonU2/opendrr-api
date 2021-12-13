@@ -56,7 +56,7 @@ jobs:
       continue-on-error: true
       run: docker compose up --build
       # Once testing is complete, increase to avoid early timeout
-      timeout-minutes: 275
+      timeout-minutes: 255
 
     - name: Install ogr2ogr
       run: |
@@ -72,7 +72,7 @@ jobs:
         scenarios=(dsra_acm7p3_leechriverfullfault dsra_idm7p1_sidney dsra_sim9p0_cascadiainterfacebestfault)
         for i in "${scenarios[@]}"
         do
-          ogr2ogr -f GPKG temp/$i_indicators_b.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_$i.$i_indicators_b" -nln $i_indicators_b
+          ogr2ogr -f GPKG temp/$i_indicators_b.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password"  -nln $i_indicators_b -sql "SELECT * FROM results_$i.$i_indicators_b"
           zip zipped/$i_indicators_b temp/$i_indicators_b.gpkg
 
           ogr2ogr -f GPKG temp/$i_indicators_s.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_$i.$i_indicators_s" -nln $i_indicators_s
