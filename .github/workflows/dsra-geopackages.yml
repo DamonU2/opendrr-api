@@ -145,7 +145,7 @@ jobs:
         fi
 
         echo "Copying files"
-        rsync --progress "$HOME/zipped" "$TEMP_DIR/FINISHED/geopackages"
+        rsync -r --progress "$HOME/zipped" "$TEMP_DIR/FINISHED/geopackages"
         git status
         CHANGES=$(git status -s | wc -l)
         git add .
