@@ -2,8 +2,8 @@ name: Generate geopackages for NHSL
 
 # Workflow runs when manually triggered using the UI or API.
 on:
-  push:
-    branches: [geopackage-action]
+  #push:
+    #branches: [geopackage-action]
   workflow_dispatch:
 
 jobs:

@@ -2,8 +2,8 @@ name: Generate geopackages for DSRA
 
 # Workflow runs when manually triggered using the UI or API.
 on:
-  #push:
-    #branches: [geopackage-action]
+  push:
+    branches: [geopackage-action]
   workflow_dispatch:
 
 jobs:
@@ -104,17 +104,17 @@ jobs:
 
         for i in "${SCENARIOS[@]}"
         do
-          ogr2ogr -f GPKG temp/${i}_indicators_b.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_${i}.${i}_indicators_b" -nln ${i}_indicators_s
-          zip zipped/${i}_indicators_b temp/${i}_indicators_b.gpkg
+          ogr2ogr -f GPKG temp/dsra_${i}_indicators_b.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_indicators_b" -nln dsra_${i}_indicators_s
+          zip zipped/dsra_${i}_indicators_b temp/dsra_${i}_indicators_b.gpkg
 
-          ogr2ogr -f GPKG temp/${i}_indicators_s.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_${i}.${i}_indicators_s" -nln ${i}_indicators_s
-          zip zipped/${i}_indicators_s temp/${i}_indicators_s.gpkg
+          ogr2ogr -f GPKG temp/dsra_${i}_indicators_s.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_indicators_s" -nln dsra_${i}_indicators_s
+          zip zipped/dsra_${i}_indicators_s temp/dsra_${i}_indicators_s.gpkg
 
-          ogr2ogr -f GPKG temp/${i}_indicators_csd.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_${i}.${i}_indicators_csd" -nln ${i}_indicators_csd
-          zip zipped/${i}_indicators_csd temp/${i}_indicators_csd.gpkg
+          ogr2ogr -f GPKG temp/dsra_${i}_indicators_csd.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_indicators_csd" -nln dsra_${i}_indicators_csd
+          zip zipped/dsra_${i}_indicators_csd temp/dsra_${i}_indicators_csd.gpkg
 
-          ogr2ogr -f GPKG temp/${i}_shakemap.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_${i}.${i}_shakemap" -nln ${i}_shakemap
-          zip zipped/${i}_shakemap temp/${i}_shakemap.gpkg
+          ogr2ogr -f GPKG temp/dsra_${i}_shakemap.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_shakemap" -nln dsra_${i}_shakemap
+          zip zipped/dsra_${i}_shakemap temp/dsra_${i}_shakemap.gpkg
         done
 
         layers=(dsra_all_scenarios_building dsra_all_scenarios_cduid dsra_all_scenarios_csduid dsra_all_scenarios_dauid dsra_all_scenarios_eruid dsra_all_scenarios_fsauid dsra_all_scenarios_pruid dsra_all_scenarios_sauid)
