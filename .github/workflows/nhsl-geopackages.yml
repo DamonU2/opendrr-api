@@ -2,8 +2,8 @@ name: Generate geopackages for NHSL
 
 # Workflow runs when manually triggered using the UI or API.
 on:
-  #push:
-    #branches: [geopackage-action]
+  push:
+    branches: [geopackage-action]
   workflow_dispatch:
 
 jobs:
@@ -31,7 +31,30 @@ jobs:
       env:
         MY_PAT: ${{ secrets.MY_PAT }}   
       run: |
-        cp sample.env .env
+        cat <<EOF > .env
+        POSTGRES_USER=postgres
+        POSTGRES_PASS=password
+        POSTGRES_PORT=5432
+        POSTGRES_HOST=db-opendrr
+        DB_NAME=opendrr
+        POPULATE_DB=0
+
+        KIBANA_ENDPOINT=http://kibana-opendrr:5601
+        ES_ENDPOINT=http://elasticsearch-opendrr:9200
+
+        loadDsraScenario=false
+        loadPsraModels=false
+        loadHazardThreat=false
+        loadPhysicalExposure=true
+        loadRiskDynamics=false
+        loadSocialFabric=true
+        loadHexGrid=false
+
+        ADD_DATA_PRINT_FUNCNAME=true
+        ADD_DATA_PRINT_LINENO=true
+        EOF
+        chmod 600 .env
+
         cat <<EOF > python/config.ini
         [rds]
         postgres_host = db-opendrr
@@ -52,57 +75,90 @@ jobs:
         EOF
         chmod 600 python/config.ini
 
-    - name: Set up docker containers, build database, and exit with timeout
-      continue-on-error: true
-      run: docker compose up --build
-      # Once testing is complete, increase to avoid early timeout
-      timeout-minutes: 255
+    # - name: Set up docker containers, build database, and exit with timeout
+    #   continue-on-error: true
+    #   run: docker compose up --build
+    #   # Once testing is complete, increase to avoid early timeout
+    #   timeout-minutes: 255
 
-    - name: Install ogr2ogr
-      run: |
-        sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
-        sudo apt-get update
-        sudo apt-get install gdal-bin
-        npm install ogr2ogr
+    # - name: Install ogr2ogr
+    #   run: |
+    #     sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+    #     sudo apt-get update
+    #     sudo apt-get install gdal-bin
+    #     npm install ogr2ogr
 
     - name: Generate gpkg
       run: |
         mkdir pe sf temp
 
-        pepacks=(nhsl_physical_exposure_indicators_b nhsl_physical_exposure_indicators_b_ab nhsl_physical_exposure_indicators_b_bc nhsl_physical_exposure_indicators_b_mb nhsl_physical_exposure_indicators_b_nb nhsl_physical_exposure_indicators_b_nl nhsl_physical_exposure_indicators_b_ns nhsl_physical_exposure_indicators_b_nt nhsl_physical_exposure_indicators_b_nu nhsl_physical_exposure_indicators_b_on nhsl_physical_exposure_indicators_b_pe nhsl_physical_exposure_indicators_b_qc nhsl_physical_exposure_indicators_b_sk nhsl_physical_exposure_indicators_b_yt nhsl_physical_exposure_indicators_s nhsl_physical_exposure_indicators_s_ab nhsl_physical_exposure_indicators_s_bc nhsl_physical_exposure_indicators_s_mb nhsl_physical_exposure_indicators_s_nb nhsl_physical_exposure_indicators_s_nl nhsl_physical_exposure_indicators_s_ns nhsl_physical_exposure_indicators_s_nt nhsl_physical_exposure_indicators_s_nu nhsl_physical_exposure_indicators_s_on nhsl_physical_exposure_indicators_s_pe nhsl_physical_exposure_indicators_s_qc nhsl_physical_exposure_indicators_s_sk nhsl_physical_exposure_indicators_s_yt)
-        for i in "${pepacks[@]}"
-        do
-          ogr2ogr -f GPKG temp/$i.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_nhsl_physical_exposure.$i" -nln $i
-          zip pe/$i temp/$i.gpkg
-        done
+        echo "This is a test" > pe/test.txt
+        echo "This is a test" > sf/test.txt
 
-        sfpacks=(nhsl_social_fabric_indicators_s nhsl_social_fabric_indicators_s_ab nhsl_social_fabric_indicators_s_bc nhsl_social_fabric_indicators_s_mb nhsl_social_fabric_indicators_s_nb nhsl_social_fabric_indicators_s_nl nhsl_social_fabric_indicators_s_ns nhsl_social_fabric_indicators_s_nt nhsl_social_fabric_indicators_s_nu nhsl_social_fabric_indicators_s_on nhsl_social_fabric_indicators_s_pe nhsl_social_fabric_indicators_s_qc nhsl_social_fabric_indicators_s_sk nhsl_social_fabric_indicators_s_yt)
-        for i in "${sfpacks[@]}"
-        do
-          ogr2ogr -f GPKG temp/$i.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_nhsl_social_fabric.$i" -nln $i
-          zip sf/$i temp/$i.gpkg
-        done
+      # pepacks=(nhsl_physical_exposure_indicators_b nhsl_physical_exposure_indicators_b_ab nhsl_physical_exposure_indicators_b_bc nhsl_physical_exposure_indicators_b_mb nhsl_physical_exposure_indicators_b_nb nhsl_physical_exposure_indicators_b_nl nhsl_physical_exposure_indicators_b_ns nhsl_physical_exposure_indicators_b_nt nhsl_physical_exposure_indicators_b_nu nhsl_physical_exposure_indicators_b_on nhsl_physical_exposure_indicators_b_pe nhsl_physical_exposure_indicators_b_qc nhsl_physical_exposure_indicators_b_sk nhsl_physical_exposure_indicators_b_yt nhsl_physical_exposure_indicators_s nhsl_physical_exposure_indicators_s_ab nhsl_physical_exposure_indicators_s_bc nhsl_physical_exposure_indicators_s_mb nhsl_physical_exposure_indicators_s_nb nhsl_physical_exposure_indicators_s_nl nhsl_physical_exposure_indicators_s_ns nhsl_physical_exposure_indicators_s_nt nhsl_physical_exposure_indicators_s_nu nhsl_physical_exposure_indicators_s_on nhsl_physical_exposure_indicators_s_pe nhsl_physical_exposure_indicators_s_qc nhsl_physical_exposure_indicators_s_sk nhsl_physical_exposure_indicators_s_yt)
+      # for i in "${pepacks[@]}"
+      # do
+      #   ogr2ogr -f GPKG temp/$i.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_nhsl_physical_exposure.$i" -nln $i
+      #   zip pe/$i temp/$i.gpkg
+      # done
 
-    - name: Push files to physical-exposure/data in the nhsl repo
-      uses: dmnemec/copy_file_to_another_repo_action@main
+      # sfpacks=(nhsl_social_fabric_indicators_s nhsl_social_fabric_indicators_s_ab nhsl_social_fabric_indicators_s_bc nhsl_social_fabric_indicators_s_mb nhsl_social_fabric_indicators_s_nb nhsl_social_fabric_indicators_s_nl nhsl_social_fabric_indicators_s_ns nhsl_social_fabric_indicators_s_nt nhsl_social_fabric_indicators_s_nu nhsl_social_fabric_indicators_s_on nhsl_social_fabric_indicators_s_pe nhsl_social_fabric_indicators_s_qc nhsl_social_fabric_indicators_s_sk nhsl_social_fabric_indicators_s_yt)
+      # for i in "${sfpacks[@]}"
+      # do
+      #   ogr2ogr -f GPKG temp/$i.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_nhsl_social_fabric.$i" -nln $i
+      #   zip sf/$i temp/$i.gpkg
+      # done
+
+    - name: Push files to geopackage-update branch and open PR in NHSL repo
       env:
-        API_TOKEN_GITHUB: ${{ secrets.MY_PAT }}
-      with:
-        source_file: 'pe/.'
-        destination_repo: 'DamonU2/national-human-settlement'
-        destination_folder: 'physical-exposure/data'
-        user_email: '41898282+github-actions[bot]@users.noreply.github.com'
-        user_name: 'github-actions[bot]'
-        commit_message: 'Geopackages updated'
+        # PAT requires read:org
+        GITHUB_TOKEN: ${{ secrets.MY_PAT }}
+      run: |
+        HOME=$PWD
+        DESTINATION_REPO="DamonU2/national-human-settlement"
 
-    - name: Push files to social-fabric/data in the nhsl repo
-      uses: dmnemec/copy_file_to_another_repo_action@main
-      env:
-        API_TOKEN_GITHUB: ${{ secrets.MY_PAT }}
-      with:
-        source_file: 'sf/.'
-        destination_repo: 'DamonU2/national-human-settlement'
-        destination_folder: 'social-fabric/data'
-        user_email: '41898282+github-actions[bot]@users.noreply.github.com'
-        user_name: 'github-actions[bot]'
-        commit_message: 'Geopackages updated'
+        TEMP_DIR=$(mktemp -d)
+
+        echo "Cloning national-human-settlement repository"
+        git clone "https://$GITHUB_TOKEN@github.com/$DESTINATION_REPO.git" "$TEMP_DIR"
+        cd $TEMP_DIR
+        git fetch -a
+
+        EXISTING_BRANCH=$(git show-ref "geopackage-update" | wc -l)
+        if [ $EXISTING_BRANCH == 0 ];
+        then
+          git checkout -b "geopackage-update"
+        else
+          git checkout "geopackage-update"
+        fi
+
+        echo "Copying physical exposure files"
+        rsync -r --progress "$HOME/pe/." "$TEMP_DIR/physical-exposure/data"
+
+        echo "Copying social fabric files"
+        rsync -r --progress "$HOME/sf/." "$TEMP_DIR/social-fabric/data"
+
+        git add .
+        git status
+        CHANGES=$(git status -s | wc -l)
+
+        git config --global user.email "damon_ulmi@hotmail.com"
+        git config --global user.name "DamonU2"
+
+        if [ $CHANGES != 0 ];
+        then
+          git commit -m "Updates to geopackages"
+          echo "Pushing commit"
+          git push -u origin HEAD:geopackage-update
+
+          if [ $EXISTING_BRANCH == 0 ];
+          then
+            echo "Creating a pull request"
+            gh pr create --fill -B master -H geopackage-update
+          else
+            echo "Updating pull request"
+            gh pr edit geopackage-update -b "Updated"
+          fi
+        else
+          echo "No changes made"
+        fi

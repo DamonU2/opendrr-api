@@ -2,8 +2,8 @@ name: Generate geopackages for DSRA
 
 # Workflow runs when manually triggered using the UI or API.
 on:
-  push:
-    branches: [geopackage-action]
+  #push:
+    #branches: [geopackage-action]
   workflow_dispatch:
 
 jobs:
@@ -175,5 +175,4 @@ jobs:
           fi
         else
           echo "No changes made"
-        fi
-      
+        fi      
