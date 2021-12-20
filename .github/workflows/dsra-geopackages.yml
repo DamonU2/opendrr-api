@@ -168,7 +168,7 @@ jobs:
           if [ $EXISTING_BRANCH == 0 ];
           then
             echo "Creating a pull request"
-            gh pr create --fill -B master -H geopackage-update
+            gh pr create --fill -B main -H geopackage-update
           else
             echo "Updating pull request"
             gh pr edit geopackage-update -b "Updated"
