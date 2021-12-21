@@ -92,7 +92,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.MY_PAT }}
       run: |
-        mkdir temp zipped
+        mkdir zipped
 
         echo "Getting list of eq scenarios"
         curl -H "Authorization: token ${GITHUB_TOKEN}" \
@@ -104,28 +104,28 @@ jobs:
 
         for i in "${SCENARIOS[@]}"
         do
-          ogr2ogr -f GPKG temp/dsra_${i}_indicators_b.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_indicators_b" -nln dsra_${i}_indicators_s
-          zip zipped/dsra_${i}_indicators_b temp/dsra_${i}_indicators_b.gpkg
+          ogr2ogr -f GPKG dsra_${i}_indicators_b.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_indicators_b" -nln dsra_${i}_indicators_s
+          zip zipped/dsra_${i}_indicators_b dsra_${i}_indicators_b.gpkg
 
-          ogr2ogr -f GPKG temp/dsra_${i}_indicators_s.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_indicators_s" -nln dsra_${i}_indicators_s
-          zip zipped/dsra_${i}_indicators_s temp/dsra_${i}_indicators_s.gpkg
+          ogr2ogr -f GPKG dsra_${i}_indicators_s.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_indicators_s" -nln dsra_${i}_indicators_s
+          zip zipped/dsra_${i}_indicators_s dsra_${i}_indicators_s.gpkg
 
-          ogr2ogr -f GPKG temp/dsra_${i}_indicators_csd.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_indicators_csd" -nln dsra_${i}_indicators_csd
-          zip zipped/dsra_${i}_indicators_csd temp/dsra_${i}_indicators_csd.gpkg
+          ogr2ogr -f GPKG dsra_${i}_indicators_csd.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_indicators_csd" -nln dsra_${i}_indicators_csd
+          zip zipped/dsra_${i}_indicators_csd dsra_${i}_indicators_csd.gpkg
 
-          ogr2ogr -f GPKG temp/dsra_${i}_shakemap.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_shakemap" -nln dsra_${i}_shakemap
-          zip zipped/dsra_${i}_shakemap temp/dsra_${i}_shakemap.gpkg
+          ogr2ogr -f GPKG dsra_${i}_shakemap.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_dsra_${i}.dsra_${i}_shakemap" -nln dsra_${i}_shakemap
+          zip zipped/dsra_${i}_shakemap dsra_${i}_shakemap.gpkg
         done
 
         layers=(dsra_all_scenarios_building dsra_all_scenarios_cduid dsra_all_scenarios_csduid dsra_all_scenarios_dauid dsra_all_scenarios_eruid dsra_all_scenarios_fsauid dsra_all_scenarios_pruid dsra_all_scenarios_sauid)
         for i in "${layers[@]}"
         do
-          ogr2ogr -f GPKG temp/${i}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM dsra.${i}" -nln ${i}
-          zip zipped/${i} temp/${i}.gpkg
+          ogr2ogr -f GPKG ${i}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM dsra.${i}" -nln ${i}
+          zip zipped/${i} ${i}.gpkg
         done
 
-        ogr2ogr -f GPKG temp/shakemap_scenario_extents.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM gmf.shakemap_scenario_extents" -nln shakemap_scenario_extents
-        zip zipped/shakemap_scenario_extents temp/shakemap_scenario_extents.gpkg
+        ogr2ogr -f GPKG shakemap_scenario_extents.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM gmf.shakemap_scenario_extents" -nln shakemap_scenario_extents
+        zip zipped/shakemap_scenario_extents shakemap_scenario_extents.gpkg
 
     - name: Push files to geopackage-update branch and open PR in earthquake-scenarios repo
       env:
