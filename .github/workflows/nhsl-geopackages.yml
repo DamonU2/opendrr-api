@@ -112,7 +112,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.MY_PAT }}
       run: |
         HOME=$PWD
-        DESTINATION_REPO="DamonU2/national-human-settlement"
+        DESTINATION_REPO="OpenDRR/national-human-settlement"
 
         TEMP_DIR=$(mktemp -d)
 
