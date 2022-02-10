@@ -1,0 +1,282 @@
+name: Generate geopackages for PSRA
+
+# Workflow runs when manually triggered using the UI or API
+on:
+  #push:
+    #branches: [geopackage-action]
+  workflow_dispatch:
+
+jobs:
+  build-gpkgs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Free up disk space by deleting unused software
+      run: |
+        df -h
+        $TIME_RUN sudo eatmydata rm -rf /usr/share/dotnet       # 24.1 GB
+        $TIME_RUN sudo eatmydata rm -rf /usr/local/lib/android  # 11.3 GB
+        $TIME_RUN sudo eatmydata rm -rf /opt/ghc                #  1.8 GB
+        $TIME_RUN sudo eatmydata rm -rf /usr/share/swift        #  1.3 GB
+        $TIME_RUN sudo eatmydata rm -rf /usr/local/graalvm      #  1.0 GB
+        df -h
+
+    - name: Checkout using current working branch with lfs enabled
+      uses: actions/checkout@v2
+      with:
+        ref: update_dsra_psra_oct2021
+        lfs: 'true'
+
+    - name: Setup .env
+      env:
+        MY_PAT: ${{ secrets.MY_PAT }}   
+      run: |
+        cat <<EOF > .env
+        POSTGRES_USER=postgres
+        POSTGRES_PASS=password
+        POSTGRES_PORT=5432
+        POSTGRES_HOST=db-opendrr
+        DB_NAME=opendrr
+        POPULATE_DB=0
+
+        KIBANA_ENDPOINT=http://kibana-opendrr:5601
+        ES_ENDPOINT=http://elasticsearch-opendrr:9200
+
+        loadDsraScenario=false
+        loadPsraModels=true
+        loadHazardThreat=false
+        loadPhysicalExposure=false
+        loadRiskDynamics=false
+        loadSocialFabric=false
+        loadHexGrid=false
+
+        ADD_DATA_PRINT_FUNCNAME=true
+        ADD_DATA_PRINT_LINENO=true
+        EOF
+        chmod 600 .env
+
+        cat <<EOF > python/config.ini
+        [rds]
+        postgres_host = db-opendrr
+        postgres_port = 5432
+        postgres_un = postgres
+        postgres_pw = password
+        postgres_db = opendrr
+        postgres_address = db-opendrr:5432/opendrr
+
+        [es]
+        es_un = elastic
+        es_pw = changeme
+        es_endpoint = elasticsearch-opendrr:9200
+        kibana_endpoint = localhost:5601
+
+        [auth]
+        github_token = $MY_PAT
+        EOF
+        chmod 600 python/config.ini
+
+    - name: Set up docker containers, build database, and exit with timeout
+      continue-on-error: true
+      run: docker compose up --build
+      # Once testing is complete, increase to avoid early timeout?
+      timeout-minutes: 90
+
+    - name: Install ogr2ogr
+      run: |
+        sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+        sudo apt-get update
+        sudo apt-get install gdal-bin
+        npm install ogr2ogr
+
+    - name: Generate gpkg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        mkdir zipped
+
+      # Export PSRA views from postgis db into Geopackage by economic region.
+        for i in (psra_bc_indicators_b psra_bc_indicators_s)
+        do
+          for j in (5910 5920 5930 5940 5950 5960 5970 5980)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_bc.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_nl_indicators_b psra_nl_indicators_s)
+        do
+          for j in (1010 1020 1030 1040)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_nl.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_pe_indicators_b psra_pe_indicators_s)
+        do
+          for j in (1110)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_pe.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_ns_indicators_b psra_ns_indicators_s)
+        do
+          for j in (1210 1220 1230 1240 1250)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_ns.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_nb_indicators_b psra_nb_indicators_s)
+        do
+          for j in (1310 1320 1330 1340 1350)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_nb.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_qc_indicators_b psra_qc_indicators_s)
+        do
+          for j in (2410 2415 2420 2425 2430 2433 2435 2440 2445 2450 2455 2460 2465 2470 2475 2480 2490)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_qc.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_on_indicators_b psra_on_indicators_s)
+        do
+          for j in (3510 3515 3520 3530 3540 3550 3560 3570 3580 3590 3595)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_on.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_mb_indicators_b psra_mb_indicators_s)
+        do
+          for j in (4610 4620 4630 4640 4650 4660 4670 4680)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_mb.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_sk_indicators_b psra_sk_indicators_s)
+        do
+          for j in (4710 4720 4730 4740 4750 4760)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_sk.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_ab_indicators_b psra_ab_indicators_s)
+        do
+          for j in (4810 4820 4830 4840 4850 4860 4870 4880)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_ab.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_yt_indicators_b psra_yt_indicators_s)
+        do
+          for j in (6010)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_yt.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_nt_indicators_b psra_nt_indicators_s)
+        do
+          for j in (6110)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_nt.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+        for i in (psra_nu_indicators_b psra_nu_indicators_s)
+        do
+          for j in (6210)
+          do
+            ogr2ogr -f GPKG ${i}_${j}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_nu.${i} WHERE eruid = '{$j}'" -nln ${i}_${j}
+            zip zipped/${i}_${j} ${i}_${j}.gpkg
+          done
+        done
+
+      # Export PSRA views from postgis db into Geopackage by province
+        provs=(psra_bc psra_ab psra_sk psra_mb psra_on psra_qc psra_nb psra_ns psra_pe psra_nl psra_yt psra_nt psra_nu)
+        views=(all_indicators_b all_indicators_s pml_s src_loss hcurves_pga hcurves_sa0p1 hcurves_sa0p2 hcurves_sa0p3 hcurves_sa0p5 hcurves_sa0p6 hcurves_sa1p0 hcurves_sa2p0 hmaps hmaps_xref agg_curves_stats uhs)
+        for p in "${provs[@]}"
+        do
+          for v in "${views[@]}"
+          do
+            ogr2ogr -f GPKG ${p}_${v}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_${p}.${p}_${v}" -nln ${p}_${v}
+            zip zipped/${p}_${v} ${p}_${v}.gpkg
+          done
+        done
+
+      # Export PSRA views from postgis db into Geopackage for national level.
+        for i in (psra_all_indicators_b psra_all_indicators_s psra_pml_s psra_src_loss psra_uhs)
+        do
+          ogr2ogr -f GPKG ${i}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_national.${i}" -nln ${i}
+          zip zipped/${i} ${i}.gpkg
+        done
+
+    - name: Push files to geopackage-update branch and open PR in canada-srm2 repo
+      env:
+        # PAT requires read:org
+        GITHUB_TOKEN: ${{ secrets.MY_PAT }}
+        USER: ${{ github.actor }}
+      run: |
+        HOME=$PWD
+        DESTINATION_REPO="DamonU2/canada-srm2"
+
+        TEMP_DIR=$(mktemp -d)
+
+        echo "Cloning canada-srm2 repository"
+        git clone "https://$GITHUB_TOKEN@github.com/$DESTINATION_REPO.git" "$TEMP_DIR"
+        cd $TEMP_DIR
+        git fetch -a
+
+        EXISTING_BRANCH=$(git show-ref "geopackage-update" | wc -l)
+        if [ $EXISTING_BRANCH == 0 ];
+        then
+          git checkout -b "geopackage-update"
+        else
+          git checkout "geopackage-update"
+        fi
+
+        echo "Copying files"
+        rsync -r --progress "$HOME/zipped/." "$TEMP_DIR/geopackages"
+        git add .
+        git status
+        CHANGES=$(git status -s | wc -l)
+
+        git config --global user.name $USER
+
+        if [ $CHANGES != 0 ];
+        then
+          git commit -m "Updates to geopackages"
+          echo "Pushing commit"
+          git push -u origin HEAD:geopackage-update
+
+          if [ $EXISTING_BRANCH == 0 ];
+          then
+            echo "Creating a pull request"
+            gh pr create --fill -B master -H geopackage-update
+          else
+            echo "Updating pull request"
+            gh pr edit geopackage-update -b "Updated"
+          fi
+        else
+          echo "No changes made"
+        fi      
