@@ -94,7 +94,6 @@ jobs:
       run: |
         mkdir zipped
 
-      # Export PSRA views from postgis db into Geopackage by economic region.
         for i in (psra_bc_indicators_b psra_bc_indicators_s)
         do
           for j in (5910 5920 5930 5940 5950 5960 5970 5980)
@@ -212,7 +211,6 @@ jobs:
           done
         done
 
-      # Export PSRA views from postgis db into Geopackage by province
         provs=(psra_bc psra_ab psra_sk psra_mb psra_on psra_qc psra_nb psra_ns psra_pe psra_nl psra_yt psra_nt psra_nu)
         views=(all_indicators_b all_indicators_s pml_s src_loss hcurves_pga hcurves_sa0p1 hcurves_sa0p2 hcurves_sa0p3 hcurves_sa0p5 hcurves_sa0p6 hcurves_sa1p0 hcurves_sa2p0 hmaps hmaps_xref agg_curves_stats uhs)
         for p in "${provs[@]}"
@@ -224,7 +222,6 @@ jobs:
           done
         done
 
-      # Export PSRA views from postgis db into Geopackage for national level.
         for i in (psra_all_indicators_b psra_all_indicators_s psra_pml_s psra_src_loss psra_uhs)
         do
           ogr2ogr -f GPKG ${i}.gpkg PG:"host=localhost port=5432 user=postgres dbname=opendrr password=password" -sql "SELECT * FROM results_psra_national.${i}" -nln ${i}
