@@ -11,6 +11,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout using current working branch with lfs enabled
+      uses: actions/checkout@v2
+      with:
+        #ref: update_dsra_psra_oct2021
+        lfs: 'true'
+
     - name: Free up disk space by deleting unused software
       run: |
         df -h
@@ -22,12 +28,6 @@ jobs:
         $TIME_RUN sudo eatmydata rm -rf "/usr/local/share/boost"
         $TIME_RUN sudo eatmydata rm -rf "$AGENT_TOOLSDIRECTORY"
         df -h
-
-    - name: Checkout using current working branch with lfs enabled
-      uses: actions/checkout@v2
-      with:
-        #ref: update_dsra_psra_oct2021
-        lfs: 'true'
 
     - name: Setup .env
       env:
