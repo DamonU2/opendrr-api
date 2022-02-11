@@ -84,6 +84,7 @@ jobs:
 
     - name: Install ogr2ogr
       run: |
+        df -h
         sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
         sudo apt-get update
         sudo apt-get install gdal-bin
