@@ -19,6 +19,7 @@ jobs:
         $TIME_RUN sudo eatmydata rm -rf /opt/ghc                #  1.8 GB
         $TIME_RUN sudo eatmydata rm -rf /usr/share/swift        #  1.3 GB
         $TIME_RUN sudo eatmydata rm -rf /usr/local/graalvm      #  1.0 GB
+        $TIME_RUN sudo eatmydata rm -rf "/usr/local/share/boost"
         df -h
 
     - name: Checkout using current working branch with lfs enabled
