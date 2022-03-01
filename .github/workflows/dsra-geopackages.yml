@@ -79,7 +79,7 @@ jobs:
     - name: Set up docker containers, build database, and exit with timeout
       continue-on-error: true
       run: docker compose up --build
-      timeout-minutes: 120
+      timeout-minutes: 150
 
     - name: Install ogr2ogr
       run: |
