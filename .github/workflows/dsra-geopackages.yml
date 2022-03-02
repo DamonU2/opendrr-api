@@ -13,6 +13,8 @@ jobs:
 
     - name: Free up disk space by deleting unused software
       run: |
+        cd
+        ls
         cd usr
         ls
         cd share
