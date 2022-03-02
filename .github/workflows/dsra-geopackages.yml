@@ -13,11 +13,7 @@ jobs:
 
     - name: Free up disk space by deleting unused software
       run: |
-        cd
-        ls
-        cd usr
-        ls
-        cd share
+        cd ~
         ls
         df -h
         $TIME_RUN sudo eatmydata rm -rf /usr/share/dotnet       # 24.1 GB
