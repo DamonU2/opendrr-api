@@ -13,12 +13,12 @@ jobs:
 
     - name: Free up disk space by deleting unused software
       run: | 
-        df -h
+        df -BM
         echo
         sudo swapoff -a
         sudo rm -f /swapfile
         sudo apt clean
-        df -h
+        df -BM
         $TIME_RUN sudo eatmydata rm -rf /usr/share/dotnet       # 24.1 GB
         $TIME_RUN sudo eatmydata rm -rf /usr/local/lib/android  # 11.3 GB
         $TIME_RUN sudo eatmydata rm -rf /opt/ghc                #  1.8 GB
@@ -41,7 +41,7 @@ jobs:
         $TIME_RUN sudo eatmydata rm -rf /usr/share/ri
         $TIME_RUN sudo eatmydata rm -rf /usr/share/rubygems-integration
         echo
-        df -h
+        df -BM
 
     - name: Checkout using current working branch with lfs enabled
       uses: actions/checkout@v2
@@ -104,7 +104,7 @@ jobs:
 
     - name: Install ogr2ogr
       run: |
-        df -h
+        df -BM
         sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
         sudo apt-get update
         sudo apt-get install gdal-bin
