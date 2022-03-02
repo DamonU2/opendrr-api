@@ -2,15 +2,15 @@ name: Generate geopackages for DSRA
 
 # Workflow runs when manually triggered using the UI or API.
 on:
-  push:
-    branches: [geopackage-action]
+  #push:
+    #branches: [geopackage-action]
   workflow_dispatch:
 
 jobs:
   build-gpkgs:
     runs-on: ubuntu-latest
-
     steps:
+
     - name: Free up disk space by deleting unused software
       run: |
         df -h
