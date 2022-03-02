@@ -2,8 +2,8 @@ name: Generate geopackages for DSRA
 
 # Workflow runs when manually triggered using the UI or API.
 on:
-  #push:
-    #branches: [geopackage-action]
+  push:
+    branches: [geopackage-action]
   workflow_dispatch:
 
 jobs:
@@ -20,6 +20,11 @@ jobs:
         $TIME_RUN sudo eatmydata rm -rf /usr/share/swift        #  1.3 GB
         $TIME_RUN sudo eatmydata rm -rf /usr/local/graalvm      #  1.0 GB
         $TIME_RUN sudo eatmydata rm -rf "$AGENT_TOOLSDIRECTORY" #  6.0 GB
+        $TIME_RUN sudo eatmydata rm -rf /usr/share/miniconda
+        $TIME_RUN sudo eatmydata rm -rf /usr/share/julia
+        $TIME_RUN sudo eatmydata rm -rf /usr/share/perl
+        $TIME_RUN sudo eatmydata rm -rf /usr/share/ruby
+        $TIME_RUN sudo eatmydata rm -rf /usr/share/node
         df -h
 
     - name: Checkout using current working branch with lfs enabled
@@ -32,6 +37,7 @@ jobs:
       env:
         MY_PAT: ${{ secrets.MY_PAT }}   
       run: |
+        df -h
         cat <<EOF > .env
         POSTGRES_USER=postgres
         POSTGRES_PASS=password
