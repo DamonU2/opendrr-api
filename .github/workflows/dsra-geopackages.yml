@@ -18,6 +18,8 @@ jobs:
         cd ..
         cd ..
         cd ..
+        cd usr
+        cd share
         sudo apt-get install tree
         tree -d
         echo
