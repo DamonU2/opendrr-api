@@ -13,8 +13,8 @@ jobs:
 
     - name: Free up disk space by deleting unused software
       run: |
-        cd ~
-        ls
+        sudo apt-get install tree
+        tree -d
         df -h
         $TIME_RUN sudo eatmydata rm -rf /usr/share/dotnet       # 24.1 GB
         $TIME_RUN sudo eatmydata rm -rf /usr/local/lib/android  # 11.3 GB
@@ -41,7 +41,6 @@ jobs:
       env:
         MY_PAT: ${{ secrets.MY_PAT }}   
       run: |
-        df -h
         cat <<EOF > .env
         POSTGRES_USER=postgres
         POSTGRES_PASS=password
