@@ -215,7 +215,7 @@ fetch_csv_lfs() {
 
   INFO "$repo/$path"
   RUN curl -s -o "$response" \
-    --retry 999 --retry-max-time 0 \
+    --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
     -H "Authorization: token ${GITHUB_TOKEN}" \
     -L "https://api.github.com/repos/$owner/$repo/contents/$path"
 
@@ -227,9 +227,10 @@ fetch_csv_lfs() {
   echo size="$size"
 
   LOG "Download from $download_url"
-  RUN curl -o "$output_file" -L "$download_url" --retry 999 --retry-max-time 0
+  RUN curl -o "$output_file" -L "$download_url" --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360
 }
 
+# [OBSOLETE, to be refactored or be replaced with downloading release assets]
 # fetch_csv_xz downloads CSV data files from OpenDRR xz-compressed repos
 fetch_csv_xz() {
   if [ "$#" -ne 2 ]; then
@@ -252,23 +253,23 @@ fetch_csv_xz() {
   RUN mkdir -p "github-api/$path_dir"
   response="github-api/$path_dir.dir.json"
   RUN curl -s -o "$response" \
-    --retry 999 --retry-max-time 0 \
+    --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
     -H "Authorization: token ${GITHUB_TOKEN}" \
     -H "Accept: application/vnd.github.v3+json" \
     -L "https://api.github.com/repos/$owner/$repo-xz/contents/$path_dir"
 
   is_dry_run || download_url=$(jq -r '.[] | select(.name == "'"$output_file"'.xz") | .download_url' "$response")
   LOG "${FUNCNAME[0]}: Download from $download_url"
-  RUN curl -o "$output_file.xz" -L "$download_url" --retry 999 --retry-max-time 0
+  RUN curl -o "$output_file.xz" -L "$download_url" --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360
 
   # TODO: Keep the compressed file somewhere, uncompress when needed
   RUN unxz "$output_file.xz"
 }
 
-# fetch_csv calls either fetch_csv_xz or fetch_csv_lfs to fetch CSV files
+# fetch_csv calls fetch_csv_lfs to fetch CSV files
 fetch_csv() {
   # TODO: Make it more intelligent.
-  RUN fetch_csv_xz "$@" || RUN fetch_csv_lfs "$@"
+  RUN fetch_csv_lfs "$@"
 }
 
 # fetch_psra_csv_from_model fetches CSV files from the specified model
@@ -285,9 +286,9 @@ fetch_psra_csv_from_model() {
 
   for PT in "${PT_LIST[@]}"; do
     RUN curl -H "Authorization: token ${GITHUB_TOKEN}" \
-      --retry 999 --retry-max-time 0 \
+      --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
       -o "${PT}.json" \
-      -L "https://api.github.com/repos/OpenDRR/canada-srm2/contents/$model/output/${PT}?ref=tieg_natmodel2021"
+      -L "https://api.github.com/repos/OpenDRR/canada-srm2/contents/$model/output/${PT}?ref=master"
 
     RUN mapfile -t DOWNLOAD_LIST < <(jq -r '.[].url | select(. | contains(".csv"))' "${PT}.json")
 
@@ -296,12 +297,12 @@ fetch_psra_csv_from_model() {
       for file in "${DOWNLOAD_LIST[@]}"; do
         FILENAME=$(echo "$file" | cut -f-1 -d? | cut -f11- -d/)
         RUN curl -H "Authorization: token ${GITHUB_TOKEN}" \
-          --retry 999 --retry-max-time 0 \
+          --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
           -o "$FILENAME" \
           -L "$file"
         is_dry_run || DOWNLOAD_URL=$(jq -r '.download_url' "$FILENAME")
         RUN curl -o "$FILENAME" \
-          --retry 999 --retry-max-time 0 \
+          --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
           -L "$DOWNLOAD_URL"
 
         # Strip OpenQuake comment header if exists
@@ -323,9 +324,9 @@ fetch_psra_csv_from_national_model() {
   PT=Canada
 
   RUN curl -H "Authorization: token ${GITHUB_TOKEN}" \
-    --retry 999 --retry-max-time 0 \
+    --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
     -o "${PT}.json" \
-    -L "https://api.github.com/repos/OpenDRR/canada-srm2/contents/$model/output/Canada?ref=tieg_natmodel2021"
+    -L "https://api.github.com/repos/OpenDRR/canada-srm2/contents/$model/output/Canada?ref=master"
 
   RUN mapfile -t DOWNLOAD_LIST < <(jq -r '.[].url | select(. | contains(".csv"))' "${PT}.json")
 
@@ -334,12 +335,12 @@ fetch_psra_csv_from_national_model() {
     for file in "${DOWNLOAD_LIST[@]}"; do
       FILENAME=$(echo "$file" | cut -f-1 -d? | cut -f11- -d/)
       RUN curl -H "Authorization: token ${GITHUB_TOKEN}" \
-        --retry 999 --retry-max-time 0 \
+        --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
         -o "$FILENAME" \
         -L "$file"
       is_dry_run || DOWNLOAD_URL=$(jq -r '.download_url' "$FILENAME")
       RUN curl -o "$FILENAME" \
-        --retry 999 --retry-max-time 0 \
+        --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
         -L "$DOWNLOAD_URL"
 
       # Strip OpenQuake comment header if exists
@@ -432,7 +433,7 @@ read_github_token() {
   tmpfile=$(mktemp)
   status_code=$(curl --write-out "%{http_code}" --silent --output "$tmpfile" \
     -H "Authorization: token ${GITHUB_TOKEN}" \
-    -L https://api.github.com/repos/OpenDRR/canada-srm2/contents/cDamage/output)
+    -L https://api.github.com/repos/OpenDRR/canada-srm2/contents/eDamage/output)
   INFO "Access to OpenDRR/canada-srm2 returns HTTP status code $status_code"
 
   if [[ "$status_code" -ne 200 ]] ; then
@@ -455,13 +456,13 @@ read_github_token() {
 # from the OpenDRR/model-factory repository
 get_model_factory_scripts() {
   # TODO: Make this more robust
-  curl -L -o model-factory.tar.gz https://github.com/OpenDRR/model-factory/archive/refs/tags/v1.4.0.tar.gz
+  curl -L -o model-factory.tar.gz https://github.com/OpenDRR/model-factory/archive/refs/tags/v1.4.3.tar.gz
   tar -xf model-factory.tar.gz
-  # RUN git clone https://github.com/OpenDRR/model-factory.git --branch test_hexbin_unclipped --depth 1 || (cd model-factory ; RUN git pull)
+  # RUN git clone https://github.com/OpenDRR/model-factory.git --branch updates_june2022 --depth 1 || (cd model-factory ; RUN git pull)
 
   # Copy model-factory scripts to working directory
   # TODO: Find ways to keep these scripts in their place without copying them all to WORKDIR
-  RUN cp model-factory-1.4.0/scripts/*.* .
+  RUN cp model-factory-1.4.3/scripts/*.* .
   # RUN cp model-factory/scripts/*.* .
   #rm -rf model-factory
 }
@@ -616,9 +617,9 @@ download_physical_exposure_model() {
     exposure/general-building-stock/BldgExpRef_CA_master_v3p2.csv
   RUN run_psql Create_table_canada_exposure.sql
 
-  RUN fetch_csv model-inputs \
-    exposure/building-inventory/metro-vancouver/PhysExpRef_MetroVan_v4.csv
-  RUN run_psql Create_table_canada_site_exposure_ste.sql
+  # RUN fetch_csv model-inputs \
+  #   exposure/building-inventory/metro-vancouver/PhysExpRef_MetroVan_v4.csv
+  # RUN run_psql Create_table_canada_site_exposure_ste.sql
 }
 
 download_vs30_model() {
@@ -674,7 +675,7 @@ download_luts() {
   # RUN fetch_csv canada-srm2 \
   #   blob/tieg_natmodel2021/sourceTypes.csv
   RUN fetch_csv canada-srm2 \
-    sourceTypes.csv?ref=tieg_natmodel2021
+    sourceTypes.csv?ref=master
 }
 
 download_retrofit_costs() {
@@ -739,27 +740,27 @@ copy_ancillary_tables() {
 post_process_all_tables_update() {
   LOG "## Perform update operations on all tables after data copied into tables"
   RUN run_psql Create_all_tables_update.sql
-  RUN run_psql Create_site_exposure_to_building_and_sauid.sql
-  RUN run_psql Create_table_vs_30_BC_CAN_model_update_site_exposure.sql
+  # RUN run_psql Create_site_exposure_to_building_and_sauid.sql
+  # RUN run_psql Create_table_vs_30_BC_CAN_model_update_site_exposure.sql
 }
 
 generate_indicators() {
   LOG "## Generate Indicators"
   RUN run_psql Create_physical_exposure_building_indicators_PhysicalExposure.sql
   RUN run_psql Create_physical_exposure_sauid_indicators_view_PhysicalExposure.sql
-  RUN run_psql Create_physical_exposure_building_indicators_PhysicalExposure_ste.sql
-  RUN run_psql Create_physical_exposure_sauid_indicators_view_PhysicalExposure_ste.sql
-  RUN run_psql Create_physical_exposure_site_level_indicators_PhysicalExposure_ste.sql
+  # RUN run_psql Create_physical_exposure_building_indicators_PhysicalExposure_ste.sql
+  # RUN run_psql Create_physical_exposure_sauid_indicators_view_PhysicalExposure_ste.sql
+  # RUN run_psql Create_physical_exposure_site_level_indicators_PhysicalExposure_ste.sql
   RUN run_psql Create_risk_dynamics_indicators.sql
   RUN run_psql Create_social_vulnerability_sauid_indicators_SocialFabric.sql
   RUN run_psql Create_MH_risk_sauid_prioritization_prereq_tables.sql
   RUN run_psql Create_MH_risk_sauid_prioritization_Canada.sql
   # RUN run_psql Create_MH_risk_sauid_ALL.sql
-  RUN run_psql Create_hexbin_physical_exposure_aggregation_area_proxy.sql
+  RUN run_psql Create_hexgrid_physical_exposure_aggregation_area_proxy.sql
   # RUN run_psql Create_hexbin_physical_exposure_hexbin_aggregation_centroid.sql
-  RUN run_psql Create_hexbin_MH_risk_sauid_prioritization_aggregation_area.sql
+  RUN run_psql Create_hexgrid_MH_risk_sauid_prioritization_aggregation_area.sql
   # RUN run_psql Create_hexbin_MH_risk_sauid_prioritization_aggregation_centroid.sql
-  RUN run_psql Create_hexbin_social_vulnerability_aggregation_area_proxy.sql
+  RUN run_psql Create_hexgrid_social_vulnerability_aggregation_area_proxy.sql
   # RUN run_psql Create_hexbin_social_vulnerability_aggregation_centroid.sql
 }
 
@@ -772,22 +773,22 @@ import_raw_psra_tables() {
 
   LOG "### Get list of provinces & territories"
   RUN curl -H "Authorization: token ${GITHUB_TOKEN}" \
-    --retry 999 --retry-max-time 0 \
+    --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
     -o output.json \
-    -L https://api.github.com/repos/OpenDRR/canada-srm2/contents/cDamage/output?ref=tieg_natmodel2021
+    -L https://api.github.com/repos/OpenDRR/canada-srm2/contents/eDamage/output?ref=master
 
   # TODO: Compare PT_LIST with FETCHED_PT_LIST
   RUN mapfile -t FETCHED_PT_LIST < <(jq -r '.[].name' output.json)
 
-  LOG "### cDamage"
-  RUN fetch_psra_csv_from_model cDamage
+  # LOG "### cDamage"
+  # RUN fetch_psra_csv_from_model cDamage
 
-  for PT in "${PT_LIST[@]}"; do
-    ( cd "cDamage/$PT"
-      RUN merge_csv cD_*dmg-mean_b0.csv "cD_${PT}_dmg-mean_b0.csv"
-      RUN merge_csv cD_*dmg-mean_r2.csv "cD_${PT}_dmg-mean_r2.csv"
-    )
-  done
+  # for PT in "${PT_LIST[@]}"; do
+  #   ( cd "cDamage/$PT"
+  #     RUN merge_csv cD_*dmg-mean_b0.csv "cD_${PT}_dmg-mean_b0.csv"
+  #     RUN merge_csv cD_*dmg-mean_r2.csv "cD_${PT}_dmg-mean_r2.csv"
+  #   )
+  # done
 
   LOG "### cHazard"
   RUN fetch_psra_csv_from_model cHazard
@@ -867,6 +868,22 @@ post_process_psra_tables() {
   RUN run_psql psra_4.Create_psra_sauid_all_indicators_Canada.sql
 
   RUN run_psql psra_6.Create_psra_merge_into_national_indicators.sql
+  RUN run_psql psra_6a.eqri_calculation_sa.sql
+  RUN run_psql psra_6a1.eqri_calculation_csd.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_1km_uc.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_1km.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_5km_uc.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_5km.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_10km_uc.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_10km.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_25km_uc.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_25km.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_50km_uc.sql
+  RUN run_psql psra_6a2.eqri_calculation_hexgrid_100km_uc.sql
+  RUN run_psql psra_6a3.Merge_eqri_calculations.sql
+
+  RUN run_psql psra_7.Create_psra_national_hexgrid_clipped_unclipped.sql
+  RUN run_psql psra_7.Create_psra_national_hexgrid_clipped.sql
 }
 
 ############################################################################################
@@ -876,7 +893,7 @@ post_process_psra_tables() {
 import_earthquake_scenarios() {
   LOG "## Get list of earthquake scenarios"
   RUN curl -H "Authorization: token ${GITHUB_TOKEN}" \
-    --retry 999 --retry-max-time 0 \
+    --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
     -o FINISHED.json \
     -L https://api.github.com/repos/OpenDRR/earthquake-scenarios/contents/FINISHED
 
@@ -900,13 +917,13 @@ import_shakemap() {
     # Get the shakemap
     shakemap_filename=$( echo "$shakemap" | cut -f9- -d/ | cut -f1 -d?)
     RUN curl -H "Authorization: token ${GITHUB_TOKEN}" \
-      --retry 999 --retry-max-time 0 \
+      --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
       -o "$shakemap_filename" \
       -L "$shakemap"
     is_dry_run || DOWNLOAD_URL=$(jq -r '.download_url' "$shakemap_filename")
     LOG "$DOWNLOAD_URL"
     RUN curl -o "$shakemap_filename" \
-      --retry 999 --retry-max-time 0 \
+      --retry-all-errors --retry-delay 5 --retry-max-time 0 --retry 360 \
       -L "$DOWNLOAD_URL"
 
     # Run Create_table_shakemap.sql
@@ -998,6 +1015,7 @@ export_to_elasticsearch() {
     LOG "Creating PSRA indices in Elasticsearch"
     RUN python3 psra_postgres2es.py
     RUN python3 srcLoss_postgres2es.py
+    RUN python3 fsa_postgres2es.py
 
     LOG "Creating PSRA Kibana Index Patterns"
     RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_psra_indicators_s" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_psra_indicators_s"}}'
@@ -1087,20 +1105,32 @@ export_to_elasticsearch() {
   # shellcheck disable=SC2154
   if [[ $loadHexGrid = true ]]; then
     LOG "Creating Elasticsearch indexes for Hexgrids"
+    RUN python3 hexgrid_1km_postgres2es.py
+    RUN python3 hexgrid_1km_unclipped_postgres2es.py
     RUN python3 hexgrid_5km_postgres2es.py
+    RUN python3 hexgrid_5km_unclipped_postgres2es.py
     RUN python3 hexgrid_10km_postgres2es.py
+    RUN python3 hexgrid_10km_unclipped_postgres2es.py
     RUN python3 hexgrid_25km_postgres2es.py
-    RUN python3 hexgrid_50km_postgres2es.py
-    RUN python3 hexgrid_100km_postgres2es.py
+    RUN python3 hexgrid_25km_unclipped_postgres2es.py
+    RUN python3 hexgrid_50km_unclipped_postgres2es.py
+    RUN python3 hexgrid_100km_unclipped_postgres2es.py
     RUN python3 hexgrid_sauid_postgres2es.py
+    RUN python3 hexgrid_sauid_unclipped_postgres2es.py
 
     LOG "Creating HexGrid Kibana Index Patterns"
+    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_1km" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_1km"}}'
+    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_1km_unclipped" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_1km_unclipped"}}'
     RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_5km" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_5km"}}'
+    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_5km_unclipped" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_5km_unclipped"}}'
     RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_10km" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_10km"}}'
+    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_10km_unclipped" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_10km_unclipped"}}'
     RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_25km" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_25km"}}'
-    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_50km" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_50km"}}'
-    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_100km" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_100km"}}'
+    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_25km_unclipped" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_25km_unclipped"}}'
+    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_50km_unclipped" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_50km_unclipped"}}'
+    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_hexgrid_100km_unclipped" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_hexgrid_100km_unclipped"}}'
     RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_sauid_hexgrid" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_sauid_hexgrid"}}'
+    RUN curl -X POST -H "Content-Type: application/json" "${KIBANA_ENDPOINT}/s/gsc-cgc/api/saved_objects/index-pattern/opendrr_sauid_hexgrid_unclipped" -H "kbn-xsrf: true" -d '{ "attributes": { "title":"opendrr_sauid_hexgrid_unclipped"}}'
   fi
 }
 

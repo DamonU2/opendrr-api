@@ -24,10 +24,10 @@ def main():
                 "mappings": {"properties": {"geometry": {"type": "geo_shape"}}},
             }
         ),
-        view="opendrr_hexgrid_25km_{}".format(version),
+        view="opendrr_sauid_hexgrid_unclipped_{}".format(version),
         sqlquerystring='SELECT *, ST_AsGeoJSON(geom) \
-                    FROM boundaries."HexGrid_25km" \
-                    ORDER BY "HexGrid_25km"."gridid_25" \
+                    FROM boundaries."SAUID_HexGrid_unclipped" \
+                    ORDER BY "SAUID_HexGrid_unclipped"."sauid" \
                     LIMIT {limit} \
                     OFFSET {offset}',
     )
