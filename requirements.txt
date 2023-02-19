@@ -15,7 +15,7 @@ MarkupSafe==2.0.1
 mccabe==0.6.1
 numpy==1.22.2
 pycodestyle==2.8.0
-pydantic==1.8.2
+pydantic==1.10.5
 pyflakes==2.4.0
 pygeoapi
 pyparsing==3.0.6
